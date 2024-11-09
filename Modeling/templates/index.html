@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Interface</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+
+        /* Chatbox styling with increased size */
+        #chatbox {
+            width: 90%;       /* Increase the width */
+            max-width: 900px; /* Set a larger max width */
+            margin: auto;
+            border: 1px solid #ccc;
+            padding: 20px;
+        }
+
+        /* Chatlog styling with increased height */
+        #chatlog {
+            margin-bottom: 10px;
+            height: 500px; /* Increase the height */
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        .message { margin: 5px 0; }
+        .user { color: black; }
+        .bot-correct { color: green; }
+        .bot-incorrect { color: red; }
+    </style>
+    <!-- Include MathJax for LaTeX rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div id="chatbox">
+        <h2>Chatbot</h2>
+        <div id="chatlog"></div>
+        <input type="text" id="userInput" placeholder="Type your question here" style="width: 80%;" />
+        <button onclick="sendMessage()">Send</button>
+        <br><br>
+
+        <!-- Model selection -->
+        <label for="modelSelect">Select Model:</label>
+        <select id="modelSelect">
+            <option value="gpt2">GPT-2</option>
+            <option value="gpt_neo">GPT-Neo</option>
+        </select>
+        <button onclick="switchModel()">Switch Model</button>
+        <br><br>
+
+        <!-- Prompting strategy selection -->
+        <label for="promptingSelect">Select Prompting Strategy:</label>
+        <select id="promptingSelect">
+            <option value="problem-answer">Problem-Answer</option>
+            <option value="self-consistency">Self-Consistency</option>
+            <option value="active-prompt">Active-Prompt</option>
+        </select>
+        <button onclick="switchStrategy()">Apply Strategy</button>
+    </div>
+
+    <script>
+        let selectedStrategy = "problem-answer"; // Default strategy
+
+        async function sendMessage() {
+            const userInput = document.getElementById("userInput").value;
+            document.getElementById("userInput").value = '';
+
+            // Use the selected strategy in the request
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: userInput, prompting_strategy: selectedStrategy })
+            });
+
+            const data = await response.json();
+
+            function formatResponse(text) {
+                return text.replace(/\$(.*?)\$/g, (match, latex) => {
+                    return `\\(${latex.trim()}\\)`;
+                });
+            }
+
+            const formattedUserInput = formatResponse(userInput);
+            const formattedSolution = formatResponse(data.solution);
+            const botMessageClass = data.correct ? "bot-correct" : "bot-incorrect";
+
+            document.getElementById("chatlog").innerHTML += `<div class="message user"><b>You:</b> ${formattedUserInput}</div>`;
+            document.getElementById("chatlog").innerHTML += `<div class="message ${botMessageClass}"><b>Bot:</b> ${formattedSolution}</div>`;
+
+            MathJax.typeset();
+        }
+
+        async function switchModel() {
+            const selectedModel = document.getElementById("modelSelect").value;
+
+            const response = await fetch('/switch_model', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: selectedModel })
+            });
+
+            const data = await response.json();
+            alert(data.message);
+        }
+
+        function switchStrategy() {
+            selectedStrategy = document.getElementById("promptingSelect").value;
+            alert("Prompting Strategy set to: " + selectedStrategy);
+        }
+    </script>
+</body>
+</html>
